@@ -5,7 +5,9 @@
   "scripts": {
     "local": "nodemon server.js",
     "start": "node server.js",
-    "vercel-build": "prisma generate",
+    "vercel-build": "prisma generate && prisma migrate deploy || echo 'Migration skipped'",
+    "postinstall": "prisma generate",
+    "build": "prisma generate",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
