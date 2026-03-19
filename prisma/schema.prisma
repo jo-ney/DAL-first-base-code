@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+
+  connectionLimit = 1
+
+}
+
+model FoodEntry {
+  id          Int      @id @default(autoincrement())
+  session     String?
+  foodName    String
+  weight      Int
+  description String?
+  createdAt   DateTime @default(now())
+}
+
+model Expense {
+  id              Int      @id @default(autoincrement())
+  createdAt       DateTime @default(now())
+  dateTime        DateTime
+  itemName        String
+  capacity        Float?
+  unit            String?
+  itemPrice       Float
+  actualPrice     Float?
+  description     String?
+}
+
+model Update {
+  id          Int      @id @default(autoincrement())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  title       String
+  description String
+  note        String?
+}
