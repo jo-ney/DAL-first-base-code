@@ -31,10 +31,25 @@ app.use("/ok", (req, res) => {
 });
 
 // NEW: Search expenses route
-app.use("/api/expenses/search", async (req, res) => {
-    const result = await searchExpenses(req.body);
-    res.json(result);
-});
+app.post('/api/expense/search', async (req, res) => {
+    try {
+      // If you're sending filters in the body
+      const filters = req.body;
+      console.log('Received filters:', filters);
+      
+      const result = await searchExpenses(filters);
+      
+      if (result.success) {
+        res.json(result);
+      } else {
+        res.status(400).json(result);
+      }
+    } catch (error) {
+      console.error('Route error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
 
 // Search expenses route
 // app.get('/api/expenses/search', async (req, res) => {
