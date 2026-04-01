@@ -1,51 +1,51 @@
 const { prisma } = require('../../lib/prisma');
 
 /**
- * Search expenses with filters1111
- * @param {Object} filters - Search filters1111
+ * Search expenses with filters
+ * @param {Object} reqBody - Request body containing search and filter
  * @returns {Promise<Object>} Filtered expenses
  */
-async function searchExpenses(filters = {}) {
+async function searchExpenses(reqBody = {}) {
   try {
-    const filters1111 = filters.filters
-    console.log('🔍 Searching expenses with filters1111:', filters1111);
-    console.log('console------>filters1111.:', filters1111.search);
+    // Extract search and filter from request body
+    const search = reqBody.search || '';
+    const filter = reqBody.filter || {};
+    
+    console.log('🔍 Searching expenses with:');
+    console.log('📝 Search term:', search);
+    console.log('🎯 Filter object:', filter);
     
     // Build where clause
     const where = {};
     
     // Search by item name (case insensitive)
-    if (filters1111.search) {
+    if (search && search.trim()) {
       where.itemName = {
-        contains: filters1111.search,
+        contains: search,
         mode: 'insensitive'
       };
-      console.log('📌 Applied search filter:', filters1111.search);
+      console.log('📌 Applied search filter:', search);
     }
 
-    console.log('console------>where.itemName:', where);
-
-    
     // Date range filter
-    if (filters1111.startDate || filters1111.endDate) {
+    if (filter.startDate || filter.endDate) {
       where.dateTime = {};
-      if (filters1111.startDate) {
-        where.dateTime.gte = new Date(filters1111.startDate);
-        console.log('📌 Start date:', filters1111.startDate);
+      if (filter.startDate) {
+        where.dateTime.gte = new Date(filter.startDate);
+        console.log('📌 Start date:', filter.startDate);
       }
-      if (filters1111.endDate) {
-        where.dateTime.lte = new Date(filters1111.endDate);
-        console.log('📌 End date:', filters1111.endDate);
+      if (filter.endDate) {
+        where.dateTime.lte = new Date(filter.endDate);
+        console.log('📌 End date:', filter.endDate);
       }
     }
     
-    // Price filters1111 - IMPORTANT: Don't mix different price filter types
-    if (filters1111.itemPrice && filters1111.operator) {
-      // Operator-based filter (lessThan, greaterThan, equal)
-      const price = Number(filters1111.itemPrice);
-      console.log(`📌 Price operator: ${filters1111.operator} = ${price}`);
+    // Price filters - Operator-based (lessThan, greaterThan, equal)
+    if (filter.itemPrice && filter.operator) {
+      const price = Number(filter.itemPrice);
+      console.log(`📌 Price operator: ${filter.operator} = ${price}`);
       
-      switch (filters1111.operator) {
+      switch (filter.operator) {
         case 'lessThan':
           where.itemPrice = { lt: price };
           break;
@@ -56,49 +56,58 @@ async function searchExpenses(filters = {}) {
           where.itemPrice = price;
           break;
       }
-    } else if (filters1111.minPrice || filters1111.maxPrice) {
-      // Range-based filter (min/max)
+    } 
+    // Price filters - Range-based (min/max)
+    else if (filter.minPrice || filter.maxPrice) {
       where.itemPrice = {};
-      if (filters1111.minPrice) {
-        where.itemPrice.gte = Number(filters1111.minPrice);
-        console.log('📌 Min price:', filters1111.minPrice);
+      if (filter.minPrice) {
+        where.itemPrice.gte = Number(filter.minPrice);
+        console.log('📌 Min price:', filter.minPrice);
       }
-      if (filters1111.maxPrice) {
-        where.itemPrice.lte = Number(filters1111.maxPrice);
-        console.log('📌 Max price:', filters1111.maxPrice);
+      if (filter.maxPrice) {
+        where.itemPrice.lte = Number(filter.maxPrice);
+        console.log('📌 Max price:', filter.maxPrice);
       }
     }
     
     // Unit filter
-    if (filters1111.unit) {
+    if (filter.unit) {
       where.unit = {
-        contains: filters1111.unit,
+        contains: filter.unit,
         mode: 'insensitive'
       };
-      console.log('📌 Unit filter:', filters1111.unit);
+      console.log('📌 Unit filter:', filter.unit);
     }
     
     // Capacity filter
-    if (filters1111.capacity) {
-      where.capacity = Number(filters1111.capacity);
-      console.log('📌 Capacity filter:', filters1111.capacity);
+    if (filter.capacity) {
+      where.capacity = Number(filter.capacity);
+      console.log('📌 Capacity filter:', filter.capacity);
     }
     
     // Description search
-    if (filters1111.description) {
+    if (filter.description) {
       where.description = {
-        contains: filters1111.description,
+        contains: filter.description,
         mode: 'insensitive'
       };
-      console.log('📌 Description filter:', filters1111.description);
+      console.log('📌 Description filter:', filter.description);
     }
     
     console.log('🔧 Final WHERE clause:', JSON.stringify(where, null, 2));
     
+    // Skip query if no filters are applied
+    if (Object.keys(where).length === 0 && !search) {
+      console.log('⚠️ No filters or search applied, returning all expenses?');
+      // Option 1: Return all expenses
+      // Option 2: Return empty result with message
+      // For now, we'll continue with empty where clause to get all records
+    }
+    
     // Sorting
     const orderBy = {};
-    const sortField = filters1111.sortBy || 'dateTime';
-    const sortOrder = filters1111.sortOrder || 'desc';
+    const sortField = filter.sortBy || 'dateTime';
+    const sortOrder = filter.sortOrder || 'desc';
     
     const validSortFields = ['dateTime', 'itemPrice', 'itemName', 'createdAt', 'capacity'];
     if (validSortFields.includes(sortField)) {
@@ -109,20 +118,32 @@ async function searchExpenses(filters = {}) {
     
     console.log('📊 Sorting by:', sortField, sortOrder);
     
-    // Get expenses
+    // Pagination (optional)
+    const skip = filter.page ? (filter.page - 1) * (filter.limit || 10) : 0;
+    const take = filter.limit || 50;
+    
+    // Get expenses with pagination
     const expenses = await prisma.expense.findMany({
       where,
-      orderBy
+      orderBy,
+      skip,
+      take
     });
     
-    console.log(`✅ Found ${expenses.length} expenses`);
+    // Get total count for pagination
+    const totalCount = await prisma.expense.count({ where });
+    
+    console.log(`✅ Found ${expenses.length} of ${totalCount} total expenses`);
     
     return {
+      data: expenses,
       success: true,
       count: expenses.length,
-      data: expenses,
-      appliedfilters: filters1111,
-      whereClause: where
+      total: totalCount,
+      page: filter.page || 1,
+      limit: filter.limit || 50,
+      appliedSearch: search,
+      appliedFilters: filter
     };
     
   } catch (error) {
